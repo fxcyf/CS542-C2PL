@@ -1,3 +1,0 @@
-grant codeBase "file:/home/fxcyf/MyFiles/Courses/CS542/MyC2PL/" {
-    permission java.security.AllPermission;
-};

@@ -6,6 +6,7 @@ import javax.imageio.plugins.tiff.ExifGPSTagSet;
 
 import elements.Lock;
 import elements.Operation;
+import elements.Transaction;
 
 public class LockManager {
     Map<String, List<Lock>> lockTable;
@@ -23,7 +24,7 @@ public class LockManager {
             return new ArrayList<Lock>();
     }
 
-    public Lock findTLock(String opArg, int tid) {
+    public Lock findTransLock(String opArg, int tid) {
         if (lockTable.containsKey(opArg)) {
             List<Lock> itemLocks = lockTable.get(opArg);
             for (Lock oldlock : itemLocks) {
@@ -35,9 +36,9 @@ public class LockManager {
         return null;
     }
 
-    public void grantLock(Operation op) {
+    public void storeLock(Operation op) {
         String opArg = op.getArg();
-        String opType = op.getType();
+        int opType = op.getType();
         Lock newLock = new Lock(op.getTid(), opArg, opType);
 
         if (lockTable.containsKey(opArg)) {
@@ -49,33 +50,18 @@ public class LockManager {
         }
     }
 
-    public void updateLock(Operation op) {
-
-    }
-
-    public Boolean lockExisting(Operation op, List<Lock> existing_locks) {
-        for (Lock oldLock : existing_locks) {
-            if (oldLock.getTid() == op.getTid() && oldLock.getType() == op.getType()) {
-                return true;
-            } else if (oldLock.getTid() == op.getTid() && oldLock.getType() == "write" && op.getType() == "read") {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public Boolean lockCompatible(Operation op, List<Lock> existing_locks) {
 
         switch (op.getType()) {
-            case "read": {
+            case Operation.readType: {
                 for (Lock oldLock : existing_locks) {
-                    if (oldLock.getType() == "write") {
+                    if (oldLock.getType() > Operation.readType) {
                         return false;
                     }
                 }
                 return true;
             }
-            case "write": {
+            case Operation.writeType: {
                 for (Lock oldLock : existing_locks) {
                     if (oldLock.getTid() != op.getTid()) {
                         return false;
@@ -100,25 +86,39 @@ public class LockManager {
 
     public Boolean requestLock(Operation op) {
 
-        List<Lock> exsiting_locks = findLock(op.getArg());
+        List<Lock> exsiting_item_locks = findLock(op.getArg());
 
-        if (exsiting_locks.size() == 0) {
-            grantLock(op);
+        if (exsiting_item_locks.size() == 0) {
+            storeLock(op);
             return true;
-        } else if (lockExisting(op, exsiting_locks)) {
-            return true;
-        } else if (lockCompatible(op, exsiting_locks)) {
-            Lock oldLock = findTLock(op.getArg(), op.getTid());
+        } else if (lockCompatible(op, exsiting_item_locks)) {
+            Lock oldLock = findTransLock(op.getArg(), op.getTid());
             if (oldLock != null) {
                 oldLock.updateType();
             } else {
-                grantLock(op);
+                storeLock(op);
             }
             return true;
         } else {
             addToQueue(op);
             return false;
         }
+    }
+
+    public void releaseLock(Transaction trans) {
+        List<Lock> transLocks = trans.getLocks();
+
+        for (Lock transLock : transLocks) {
+            String item = transLock.getItem();
+            List<Lock> existingItemLocks = lockTable.get(item);
+            for (Lock lock : existingItemLocks) {
+                if (lock.getTid() == trans.getTID()) {
+                    existingItemLocks.remove(lock);
+                }
+            }
+
+        }
+
     }
 
 }

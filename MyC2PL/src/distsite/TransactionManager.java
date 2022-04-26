@@ -12,30 +12,32 @@ import elements.Transaction;
 
 public class TransactionManager {
 
-    String file_name;
+    private String transaction_file;
 
-    int siteId;
-    int transaction_count;
-    int transaction_id_offset = 10000;
-    int current_transaction_index;
-    List<Transaction> history;
+    private int siteID;
+    private int transactionNum;
+    private int TIDOffset = 10000;
+    private int curTransIndex;
+    private List<Transaction> transactions;
 
-    public TransactionManager(int siteId, String file_name) {
-        this.file_name = file_name;
-        this.siteId = siteId;
-        current_transaction_index = -1;
-        transaction_count = 0;
+    public TransactionManager(int siteID, String file_name) {
 
-        history = new ArrayList<>();
+        this.transaction_file = file_name;
+        this.siteID = siteID;
+        transactionNum = 0;
+        curTransIndex = -1;
+
+        transactions = new ArrayList<>();
     }
 
     public int getNewTID() {
-        transaction_count++;
-        return siteId * transaction_id_offset + transaction_count;
+        transactionNum++;
+        return siteID * TIDOffset + transactionNum;
     }
 
     public List<Operation> transfer_update(int tid, String update_st) {
         List<Operation> ops = new ArrayList<>();
+        // update data set value = value [+] [1] where name = [a]
         String pattern = "update data set value = value (\\+|\\-|\\*|\\/) (\\d+) where name = ([A-Z]);";
 
         // Create a Pattern object
@@ -44,9 +46,16 @@ public class TransactionManager {
         // Now create matcher object.
         Matcher m = r.matcher(update_st.trim());
         if (m.find()) {
-            ops.add(new Operation(tid, "read", m.group(2)));
-            ops.add(new Operation(tid, "compute", m.group(2), m.group(2), m.group(1), m.group(1).charAt(0)));
-            ops.add(new Operation(tid, "write", m.group(2)));
+            String arg = m.group(2);
+            String num = m.group(1);
+            char operator = m.group(0).charAt(0);
+
+            // read(a)
+            ops.add(new Operation(tid, Operation.readType, arg));
+            // a = a + 1
+            ops.add(new Operation(tid, Operation.mathType, arg, arg, num, operator));
+            // write(a)
+            ops.add(new Operation(tid, Operation.writeType, m.group(2)));
         } else {
             System.out.println("Invalid update statement: " + update_st);
         }
@@ -60,7 +69,7 @@ public class TransactionManager {
         Pattern r = Pattern.compile(pattern);
         Matcher m = r.matcher(select_st);
         if (m.find()) {
-            ops.add(new Operation(tid, "read", m.group(1)));
+            ops.add(new Operation(tid, Operation.readType, m.group(1)));
         } else {
             System.out.println("Invalid select statement " + select_st);
         }
@@ -70,7 +79,7 @@ public class TransactionManager {
     public void load_history() throws Exception {
         Path currentPath = Paths.get(System.getProperty("user.dir"));
         Path filePath = Paths.get(currentPath.toString(),
-                "transactions", file_name);
+                "transactions", transaction_file);
 
         // Creating an object of BufferedReader class
         BufferedReader br = new BufferedReader(new FileReader(filePath.toString()));
@@ -81,31 +90,39 @@ public class TransactionManager {
         while ((sql_st = br.readLine()) != null) {
             if (sql_st.toLowerCase().contains("transaction")) {
                 if (transaction != null) {
-                    transaction.addOperation(new Operation(transaction.getTid(), "commit"));
-                    history.add(transaction);
+                    transaction.addOperation(new Operation(transaction.getTID(), Operation.commitType));
+                    transactions.add(transaction);
                 }
                 transaction = new Transaction(getNewTID());
             } else if (sql_st.toLowerCase().contains("update")) {
-                List<Operation> updateOps = transfer_update(transaction.getTid(), sql_st);
+                List<Operation> updateOps = transfer_update(transaction.getTID(), sql_st);
                 if (updateOps.size() > 0) {
                     transaction.addOperations(updateOps);
                 }
             } else if (sql_st.toLowerCase().contains("select")) {
-                List<Operation> selectOp = transfer_select(transaction.getTid(), sql_st);
+                List<Operation> selectOp = transfer_select(transaction.getTID(), sql_st);
                 if (selectOp.size() > 0) {
                     transaction.addOperations(selectOp);
                 }
             }
         }
         if (transaction != null) {
-            transaction.addOperation(new Operation(transaction.getTid(), "commit"));
-            history.add(transaction);
+            transaction.addOperation(new Operation(transaction.getTID(), Operation.commitType));
+            transactions.add(transaction);
         }
     }
 
+    public List<Transaction> getTransactions() {
+        return transactions;
+    }
+
     public Transaction getNextTransaction() {
-        current_transaction_index = (current_transaction_index + 1) % transaction_count;
-        return history.get(current_transaction_index);
+        curTransIndex++;
+        return transactions.get(curTransIndex);
+    }
+
+    public int getTransNum() {
+        return transactionNum;
     }
 
 }

@@ -5,17 +5,19 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
 import elements.Operation;
+import elements.Transaction;
 
 public class CentralSite implements CentralSiteInterface {
 
-    private int siteCount = 0;
+    private int siteCount;
     LockManager lockManager;
 
     public CentralSite() {
         lockManager = new LockManager();
+        siteCount = 0;
     }
 
-    public int getSiteId() {
+    public int distSiteReg() {
         siteCount += 1;
         return siteCount;
     }
@@ -26,8 +28,9 @@ public class CentralSite implements CentralSiteInterface {
 
     }
 
-    public Boolean releaseLock(Operation op) {
-        return true;
+    public void releaseLock(Transaction trans) {
+        lockManager.releaseLock(trans);
+        // return true;
     }
 
     /**
