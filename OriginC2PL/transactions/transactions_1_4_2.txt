@@ -1,0 +1,13 @@
+TRANSACTION: 
+r(B);
+mB=B+14;
+w(B);
+r(X);
+mX=X+19;
+w(X);
+r(X);
+mX=X+16;
+w(X);
+r(A);
+mA=A+2;
+w(A);

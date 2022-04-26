@@ -1,0 +1,16 @@
+TRANSACTION: 
+r(X);
+mX=X+0;
+w(X);
+r(A);
+mA=A+10;
+w(A);
+r(Y);
+mY=Y+2;
+w(Y);
+r(X);
+mX=X+19;
+w(X);
+r(Y);
+mY=Y+10;
+w(Y);

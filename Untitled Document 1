@@ -1,0 +1,11 @@
+javac -d bin src/centralsite/* src/datasite/* src/common/* src/interfaces/* src/utils/* src/waitforgraph/*
+
+cd bin; rmiregistry 1099 &
+
+java -classpath "bin:lib/sqlite-jdbc-3.36.0.3.jar" utils.TransactionGen 40 5 transactions_40_5_1.txt
+
+java -classpath "bin:lib/sqlite-jdbc-3.36.0.3.jar" utils.DatabaseInit
+
+java -classpath "bin:lib/sqlite-jdbc-3.36.0.3.jar" -Djava.rmi.server.codebase=file:bin/ -Djava.security.policy=file:policies/server.policy centralsite.CentralSite 1099 1000 true
+
+java -classpath "bin:lib/sqlite-jdbc-3.36.0.3.jar" -Djava.rmi.server.codebase=file:bin/ -Djava.security.policy=file:policies/client.policy datasite.DataSite localhost 1099 transactions/transactions_40_5_1.txt true
