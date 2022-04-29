@@ -1,6 +1,7 @@
 package utils;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -40,7 +41,13 @@ public class TransFileGenerate {
         Path currentPath = Paths.get(System.getProperty("user.dir"));
         Path filePath = Paths.get(currentPath.toString(),
                 "transactions", out_file);
+        Path dirPath = Paths.get(currentPath.toString(), "transactions");
 
+        File directory = new File(dirPath.toString());
+
+        if (!directory.exists()) {
+            directory.mkdir();
+        }
         Random rand = new Random();
 
         // List<List<String>> transactions = new ArrayList<>();
