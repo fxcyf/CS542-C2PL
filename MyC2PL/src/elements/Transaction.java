@@ -1,9 +1,12 @@
 package elements;
 
-import elements.Operation;
+import java.io.Serializable;
 import java.util.*;
 
-public class Transaction {
+public class Transaction implements Serializable {
+
+    private int sid;
+
     private int tid;
 
     private List<Operation> ops;
@@ -14,7 +17,10 @@ public class Transaction {
 
     private Map<String, Integer> pre_commit;
 
-    public Transaction(int tid) {
+    private static final long serialVersionUID = 22L;
+
+    public Transaction(int sid, int tid) {
+        this.sid = sid;
         this.tid = tid;
         ops = new ArrayList<>();
         locks = new ArrayList<>();
@@ -27,6 +33,10 @@ public class Transaction {
         locks = new ArrayList<>();
         stored_values = new HashMap<>();
         pre_commit = new HashMap<>();
+    }
+
+    public int getSID() {
+        return sid;
     }
 
     public int getTID() {
@@ -54,9 +64,9 @@ public class Transaction {
     }
 
     public void receiveOrUpdateLock(Operation op) {
-        Lock newLock = new Lock(tid, op.getArg(), op.getType());
+        Lock newLock = new Lock(sid, tid, op.getArg(), op.getType());
         for (Lock lock : locks) {
-            if (lock.getItem() == newLock.getItem()) {
+            if (lock.getItem().equals(newLock.getItem())) {
                 lock.updateType();
                 return;
             }
@@ -67,11 +77,18 @@ public class Transaction {
 
     public boolean hasLock(Operation op) {
 
-        Lock desiredLock = new Lock(tid, op.getArg(), op.getType());
-
+        // customPrint.printout("Transaction locks: " + locks);
+        Lock desiredLock = new Lock(sid, tid, op.getArg(), op.getType());
+        // customPrint.printout("Desired lock: " + desiredLock);
         for (Lock lock : locks) {
-            if (lock.getItem() == desiredLock.getItem() && lock.getType() >= desiredLock.getType()) {
-                return true;
+            if (lock.getItem().equals(desiredLock.getItem())) {
+                // customPrint.printout("Found same item lock: " + desiredLock);
+                if (lock.getType() >= desiredLock.getType()) {
+                    return true;
+                } else {
+                    return false;
+                    // customPrint.printout("Need higher lock: " + desiredLock);
+                }
             }
         }
         return false;
@@ -79,5 +96,10 @@ public class Transaction {
 
     public List<Lock> getLocks() {
         return locks;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Transaction %d", tid);
     }
 }

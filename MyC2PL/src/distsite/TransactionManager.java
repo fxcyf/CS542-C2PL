@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 
 import elements.Operation;
 import elements.Transaction;
+import utils.customPrint;
 
 public class TransactionManager {
 
@@ -16,7 +17,7 @@ public class TransactionManager {
 
     private int siteID;
     private int transactionNum;
-    private int TIDOffset = 10000;
+    private final int TIDOffset = 10000;
     private int curTransIndex;
     private List<Transaction> transactions;
 
@@ -46,18 +47,20 @@ public class TransactionManager {
         // Now create matcher object.
         Matcher m = r.matcher(update_st.trim());
         if (m.find()) {
-            String arg = m.group(2);
-            String num = m.group(1);
-            char operator = m.group(0).charAt(0);
+            String arg = m.group(3);
+            String num = m.group(2);
+            char operator = m.group(1).charAt(0);
 
             // read(a)
-            ops.add(new Operation(tid, Operation.readType, arg));
+            ops.add(new Operation(siteID, tid, Operation.readType, arg));
             // a = a + 1
-            ops.add(new Operation(tid, Operation.mathType, arg, arg, num, operator));
+            // int sid, int tid, int opType, String arg, String operand1, String operand2,
+            // char operator
+            ops.add(new Operation(siteID, tid, Operation.mathType, arg, arg, num, operator));
             // write(a)
-            ops.add(new Operation(tid, Operation.writeType, m.group(2)));
+            ops.add(new Operation(siteID, tid, Operation.writeType, arg));
         } else {
-            System.out.println("Invalid update statement: " + update_st);
+            customPrint.printout("Invalid update statement: " + update_st);
         }
 
         return ops;
@@ -69,14 +72,14 @@ public class TransactionManager {
         Pattern r = Pattern.compile(pattern);
         Matcher m = r.matcher(select_st);
         if (m.find()) {
-            ops.add(new Operation(tid, Operation.readType, m.group(1)));
+            ops.add(new Operation(siteID, tid, Operation.readType, m.group(1)));
         } else {
-            System.out.println("Invalid select statement " + select_st);
+            customPrint.printout("Invalid select statement " + select_st);
         }
         return ops;
     }
 
-    public void load_history() throws Exception {
+    public void load_transactions() throws Exception {
         Path currentPath = Paths.get(System.getProperty("user.dir"));
         Path filePath = Paths.get(currentPath.toString(),
                 "transactions", transaction_file);
@@ -90,10 +93,10 @@ public class TransactionManager {
         while ((sql_st = br.readLine()) != null) {
             if (sql_st.toLowerCase().contains("transaction")) {
                 if (transaction != null) {
-                    transaction.addOperation(new Operation(transaction.getTID(), Operation.commitType));
+                    transaction.addOperation(new Operation(siteID, transaction.getTID(), Operation.commitType));
                     transactions.add(transaction);
                 }
-                transaction = new Transaction(getNewTID());
+                transaction = new Transaction(siteID, getNewTID());
             } else if (sql_st.toLowerCase().contains("update")) {
                 List<Operation> updateOps = transfer_update(transaction.getTID(), sql_st);
                 if (updateOps.size() > 0) {
@@ -107,7 +110,7 @@ public class TransactionManager {
             }
         }
         if (transaction != null) {
-            transaction.addOperation(new Operation(transaction.getTID(), Operation.commitType));
+            transaction.addOperation(new Operation(siteID, transaction.getTID(), Operation.commitType));
             transactions.add(transaction);
         }
     }
@@ -117,7 +120,10 @@ public class TransactionManager {
     }
 
     public Transaction getNextTransaction() {
-        curTransIndex++;
+        if (curTransIndex == transactionNum - 1) {
+            return null;
+        }
+        curTransIndex += 1;
         return transactions.get(curTransIndex);
     }
 
